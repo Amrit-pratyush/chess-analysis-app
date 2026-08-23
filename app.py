@@ -15,28 +15,35 @@ app = Flask(__name__)
 BOOK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Performance.bin")
 
 def get_engine_path(user_custom_path=None):
+    # 1. If user provided a valid, existing path on this host
     if user_custom_path:
         cleaned_path = user_custom_path.strip().strip('"').strip("'")
-        if os.path.isfile(cleaned_path):
+        if cleaned_path and os.path.isfile(cleaned_path):
             return cleaned_path
 
+    # 2. Check Linux standard paths (Docker / Render environment)
+    for linux_path in ["/usr/games/stockfish", "/usr/bin/stockfish", "/usr/local/bin/stockfish"]:
+        if os.path.isfile(linux_path):
+            return linux_path
+
+    # 3. Check system PATH
+    system_engine = shutil.which("stockfish") or shutil.which("stockfish.exe")
+    if system_engine:
+        return system_engine
+
+    # 4. Check local Windows directory candidates for local offline testing
     base_dir = os.path.dirname(os.path.abspath(__file__))
     candidates = [
         os.path.join(base_dir, "stockfish-windows-x86-64-avx2", "stockfish", "stockfish-windows-x86-64-avx2.exe"),
         os.path.join(base_dir, "stockfish-windows-x86-64-avx2", "stockfish-windows-x86-64-avx2.exe"),
         os.path.join(base_dir, "stockfish", "stockfish-windows-x86-64-avx2.exe"),
         os.path.join(base_dir, "stockfish.exe"),
-        r"C:\Users\amrit\OneDrive\Desktop\chess_app\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe",
     ]
     for path in candidates:
         if os.path.isfile(path):
             return path
 
-    system_engine = shutil.which("stockfish") or shutil.which("stockfish.exe")
-    if system_engine:
-        return system_engine
-
-    return candidates[0]
+    return "stockfish"
 
 def check_is_book(reader, board_before: chess.Board, move: chess.Move, ply: int) -> bool:
     if ply > 26 or not reader:
@@ -245,8 +252,6 @@ def analyze():
         return jsonify({"error": "No PGN provided."}), 400
 
     stockfish_path = get_engine_path(data.get("stockfish_path"))
-    if not os.path.isfile(stockfish_path):
-        return jsonify({"error": f"Stockfish executable not found at: {stockfish_path}."}), 404
 
     try:
         pgn = io.StringIO(pgn_text)
