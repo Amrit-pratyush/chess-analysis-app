@@ -1,0 +1,6 @@
+﻿stockfish-windows*
+*.exe
+Performance.bin
+__pycache__/
+.venv/
+venv/

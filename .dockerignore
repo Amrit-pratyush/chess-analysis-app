@@ -1,0 +1,6 @@
+stockfish-windows*
+*.exe
+__pycache__
+.git
+.venv
+venv

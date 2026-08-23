@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stockfish Chess Game Review</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            padding: 12px 8px; 
+        }
+        .container { 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 14px; 
+        }
+
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid #334155; 
+            padding-bottom: 10px; 
+        }
+        header h1 { font-size: 19px; font-weight: 700; color: #38bdf8; }
+        header span { font-size: 11px; color: #94a3b8; }
+
+        .card { 
+            background-color: #1e293b; 
+            border: 1px solid #334155; 
+            border-radius: 10px; 
+            padding: 14px; 
+        }
+
+        .setup-grid { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 12px; 
+        }
+        @media (min-width: 768px) {
+            .setup-grid { grid-template-columns: 2fr 1fr; }
+        }
+
+        label { display: block; font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
+        textarea, input { 
+            width: 100%; 
+            background: #0f172a; 
+            border: 1px solid #475569; 
+            border-radius: 6px; 
+            padding: 8px 10px; 
+            color: #f8fafc; 
+            font-size: 13px; 
+            margin-bottom: 10px; 
+        }
+        textarea { resize: vertical; font-family: monospace; }
+
+        button.btn-primary { 
+            width: 100%; 
+            background: #059669; 
+            color: white; 
+            border: none; 
+            padding: 11px; 
+            border-radius: 6px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            font-size: 14px; 
+        }
+        button.btn-primary:hover { background: #10b981; }
+
+        button.btn-secondary { 
+            background: #334155; 
+            color: #38bdf8; 
+            border: 1px solid #475569; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            cursor: pointer; 
+            font-weight: 600; 
+        }
+        button.btn-secondary:hover { background: #475569; }
+
+        .loader { display: none; text-align: center; padding: 20px; font-size: 14px; color: #38bdf8; }
+
+        #dashboard { display: none; flex-direction: column; gap: 14px; }
+
+        .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px; 
+        }
+        @media (min-width: 768px) {
+            .metrics-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        }
+
+        .metric-box { 
+            background: #1e293b; 
+            border: 1px solid #334155; 
+            border-radius: 8px; 
+            padding: 10px; 
+            text-align: center; 
+        }
+        .metric-box h4 { font-size: 10px; text-transform: uppercase; color: #94a3b8; }
+        .metric-box p.val { font-size: 20px; font-weight: 800; margin-top: 2px; color: #34d399; }
+        .metric-box p.sub { font-size: 10px; color: #64748b; }
+
+        .main-layout { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 14px; 
+        }
+        @media (min-width: 900px) {
+            .main-layout { grid-template-columns: 420px 1fr; }
+        }
+
+        .board-container { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 10px; 
+            padding: 10px; 
+        }
+
+        .board-eval-wrapper { 
+            display: flex; 
+            gap: 6px; 
+            align-items: stretch; 
+            justify-content: center; 
+            width: 100%; 
+            max-width: 380px; 
+        }
+
+        .eval-bar-container { 
+            width: 20px; 
+            background-color: #262421; 
+            border: 1px solid #475569; 
+            border-radius: 4px; 
+            position: relative; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-end; 
+            min-height: 260px; 
+        }
+
+        .eval-bar-fill { 
+            width: 100%; 
+            background-color: #ffffff; 
+            transition: height 0.3s ease-out; 
+        }
+
+        .eval-score-text { 
+            position: absolute; 
+            left: 0; 
+            right: 0; 
+            text-align: center; 
+            font-size: 9px; 
+            font-weight: 900; 
+            z-index: 5; 
+            padding: 2px 0; 
+            pointer-events: none; 
+        }
+        .eval-score-text.score-black { top: 4px; color: #ffffff; text-shadow: 0 1px 2px #000; }
+        .eval-score-text.score-white { bottom: 4px; color: #1e293b; }
+
+        .svg-board-box { 
+            flex: 1; 
+            aspect-ratio: 1 / 1; 
+            max-width: 350px; 
+            background: #0f172a; 
+            border-radius: 6px; 
+            overflow: hidden; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .svg-board-box svg { width: 100%; height: 100%; display: block; }
+
+        .controls { 
+            display: flex; 
+            gap: 6px; 
+            width: 100%; 
+            max-width: 380px; 
+        }
+        .controls button { 
+            flex: 1; 
+            background: #334155; 
+            border: none; 
+            color: white; 
+            padding: 9px 4px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            font-size: 13px; 
+        }
+        .controls button:hover { background: #475569; }
+
+        .move-banner { 
+            width: 100%; 
+            max-width: 380px; 
+            background: #0f172a; 
+            border: 1px solid #334155; 
+            border-radius: 8px; 
+            padding: 8px; 
+            text-align: center; 
+        }
+
+        .badge { 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: flex-start; 
+            gap: 5px; 
+            padding: 4px 8px; 
+            border-radius: 5px; 
+            font-weight: 700; 
+            font-size: 11px; 
+            min-width: 110px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3); 
+        }
+
+        .badge-brilliant   { background-color: #1baca6; color: #ffffff; }
+        .badge-great       { background-color: #5c8bb0; color: #ffffff; }
+        .badge-best        { background-color: #81b64c; color: #ffffff; }
+        .badge-excellent   { background-color: #96bc4b; color: #ffffff; }
+        .badge-good        { background-color: #90a4ae; color: #ffffff; }
+        .badge-book        { background-color: #d5a47d; color: #ffffff; }
+        .badge-inaccuracy  { background-color: #f7c631; color: #1e293b; }
+        .badge-mistake     { background-color: #e58f2a; color: #ffffff; }
+        .badge-miss        { background-color: #ea5535; color: #ffffff; }
+        .badge-blunder     { background-color: #ca3431; color: #ffffff; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+        th, td { padding: 8px; border-bottom: 1px solid #334155; }
+        th { background: #0f172a; color: #94a3b8; text-transform: uppercase; font-size: 10px; }
+
+        .category-row.clickable { cursor: pointer; }
+        .category-row.clickable:hover { background-color: #334155; }
+        .category-row.disabled { opacity: 0.5; }
+        .category-row.active-cat { background-color: #1e3a8a; }
+        .jump-indicator { font-size: 10px; color: #38bdf8; margin-left: 4px; }
+
+        .move-row { cursor: pointer; }
+        .move-row:hover { background: #334155; }
+        .move-row.selected { background: #2563eb; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>♟️ Chess Game Review</h1>
+            <span>Custom PGN Analyzer</span>
+        </header>
+
+        <div class="card">
+            <div class="setup-grid">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="margin: 0;">PGN Game Input</label>
+                        <input type="file" id="pgnFileInput" accept=".pgn" style="display: none;" onchange="handleFileUpload(event)">
+                        <button type="button" onclick="document.getElementById('pgnFileInput').click()" class="btn-secondary">
+                            📁 Upload PGN
+                        </button>
+                    </div>
+                    <textarea id="pgnInput" rows="5" placeholder="Paste PGN here or upload .pgn file..."></textarea>
+                </div>
+                <div>
+                    <label>Stockfish Executable Path</label>
+                    <input id="stockfishPath" type="text" value="C:\Users\amrit\OneDrive\Desktop\chess_app\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe">
+                    
+                    <label>Analysis Depth (10-20)</label>
+                    <input id="analysisDepth" type="number" value="12" min="10" max="20">
+                    
+                    <button class="btn-primary" onclick="runReview()">Run Analysis</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loader" class="loader card">
+            ⏳ Analyzing game with Stockfish... Please wait.
+        </div>
+
+        <div id="dashboard">
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <h4 id="wName">White</h4>
+                    <p class="val" id="wAcc">0%</p>
+                    <p class="sub" id="wElo">0 Elo</p>
+                </div>
+                <div class="metric-box">
+                    <h4 id="bName">Black</h4>
+                    <p class="val" id="bAcc" style="color:#818cf8;">0%</p>
+                    <p class="sub" id="bElo">0 Elo</p>
+                </div>
+                <div class="metric-box">
+                    <h4>Total Moves</h4>
+                    <p class="val" id="totalMoves" style="color:#f8fafc;">0</p>
+                    <p class="sub">Positions</p>
+                </div>
+                <div class="metric-box">
+                    <h4>Status</h4>
+                    <p class="val" style="color:#38bdf8;">Done</p>
+                    <p class="sub">Ready</p>
+                </div>
+            </div>
+
+            <div class="main-layout">
+                <div class="card board-container">
+                    <div class="board-eval-wrapper">
+                        <div class="eval-bar-container">
+                            <div id="evalBarFill" class="eval-bar-fill" style="height: 50%;"></div>
+                            <span id="evalScoreText" class="eval-score-text score-white">0.0</span>
+                        </div>
+                        <div id="boardBox" class="svg-board-box"></div>
+                    </div>
+
+                    <div class="controls">
+                        <button onclick="firstMove()">⏮</button>
+                        <button onclick="prevMove()">◀ Prev</button>
+                        <button onclick="nextMove()">Next ▶</button>
+                        <button onclick="lastMove()">⏭</button>
+                    </div>
+                    <div class="move-banner">
+                        <div id="moveHeader" style="font-weight: bold; font-size: 13px;">Start</div>
+                        <div id="badgeBox" style="margin: 4px 0;"></div>
+                        <p id="recBox" style="font-size: 11px; color: #94a3b8;"></p>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div class="card" style="max-height: 280px; overflow-y: auto; overflow-x: auto;">
+                        <h4 style="margin-bottom: 8px; font-size: 13px;">Move List</h4>
+                        <table>
+                            <thead>
+                                <tr><th>#</th><th>Player</th><th>Move</th><th>Category</th><th>Win Loss</th></tr>
+                            </thead>
+                            <tbody id="movesBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="card" style="overflow-x: auto;">
+                        <h4 style="margin-bottom: 8px; font-size: 13px;">Classification Breakdown</h4>
+                        <table>
+                            <thead>
+                                <tr><th>Classification</th><th>White</th><th>Black</th></tr>
+                            </thead>
+                            <tbody id="breakdownBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameData = null;
+        let currentPly = 0;
+        let categoryPointers = {};
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('pgnInput').value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        async function runReview() {
+            const pgn = document.getElementById('pgnInput').value.trim();
+            const depth = document.getElementById('analysisDepth') ? document.getElementById('analysisDepth').value : 12;
+            const stockfishPath = document.getElementById('stockfishPath') ? document.getElementById('stockfishPath').value.trim() : '';
+
+            if (!pgn) {
+                alert("Please paste a PGN or upload a .pgn file before analyzing.");
+                return;
+            }
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        pgn: pgn, 
+                        depth: parseInt(depth),
+                        stockfish_path: stockfishPath 
+                    })
+                });
+
+                const rawText = await response.text();
+                if (!rawText) throw new Error("Empty response from server.");
+
+                let data = JSON.parse(rawText);
+                if (!response.ok || data.error) {
+                    alert(`Analysis Error: ${data.error || response.status}`);
+                    document.getElementById('loader').style.display = 'none';
+                    return;
+                }
+
+                gameData = data;
+                categoryPointers = {};
+                renderApp();
+            } catch (err) {
+                alert("Connection issue: " + err.message);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        function getCleanCategoryName(label) {
+            if (!label) return '';
+            if (label.includes('Brilliant')) return 'Brilliant';
+            if (label.includes('Great')) return 'Great';
+            if (label.includes('Best')) return 'Best';
+            if (label.includes('Excellent')) return 'Excellent';
+            if (label.includes('Good')) return 'Good';
+            if (label.includes('Book')) return 'Book';
+            if (label.includes('Inaccuracy')) return 'Inaccuracy';
+            if (label.includes('Mistake')) return 'Mistake';
+            if (label.includes('Miss')) return 'Miss';
+            if (label.includes('Blunder')) return 'Blunder';
+            return label;
+        }
+
+        function getBadgeIcon(label) {
+            if (!label) return '';
+            if (label.includes('Brilliant')) return '!!';
+            if (label.includes('Great')) return '!';
+            if (label.includes('Best')) return '★';
+            if (label.includes('Excellent')) return '👍';
+            if (label.includes('Good')) return '✓';
+            if (label.includes('Book')) return '📖';
+            if (label.includes('Inaccuracy')) return '?!';
+            if (label.includes('Mistake')) return '?';
+            if (label.includes('Miss')) return '✖';
+            return '??';
+        }
+
+        function getBadgeClass(label) {
+            if (!label) return '';
+            if (label.includes('Brilliant')) return 'badge-brilliant';
+            if (label.includes('Great')) return 'badge-great';
+            if (label.includes('Best')) return 'badge-best';
+            if (label.includes('Excellent')) return 'badge-excellent';
+            if (label.includes('Good')) return 'badge-good';
+            if (label.includes('Book')) return 'badge-book';
+            if (label.includes('Inaccuracy')) return 'badge-inaccuracy';
+            if (label.includes('Mistake')) return 'badge-mistake';
+            if (label.includes('Miss')) return 'badge-miss';
+            return 'badge-blunder';
+        }
+
+        function renderApp() {
+            document.getElementById('dashboard').style.display = 'flex';
+
+            document.getElementById('wName').innerText = gameData.white_player;
+            document.getElementById('bName').innerText = gameData.black_player;
+            document.getElementById('wAcc').innerText = gameData.white_accuracy + "%";
+            document.getElementById('bAcc').innerText = gameData.black_accuracy + "%";
+            document.getElementById('wElo').innerText = gameData.white_rating + " Elo";
+            document.getElementById('bElo').innerText = gameData.black_rating + " Elo";
+            document.getElementById('totalMoves').innerText = gameData.moves.length;
+
+            const categoryOrder = gameData.categories_order || [
+                "Brilliant (!!)", "Great (!)", "Best", "Excellent", "Good",
+                "Book", "Inaccuracy (?!)", "Mistake (?)", "Miss", "Blunder (??)"
+            ];
+
+            let catHtml = '';
+            categoryOrder.forEach(cat => {
+                const wCount = gameData.white_counts[cat] || 0;
+                const bCount = gameData.black_counts[cat] || 0;
+                const totalCount = wCount + bCount;
+                const isClickable = totalCount > 0;
+                const cleanName = getCleanCategoryName(cat);
+
+                catHtml += `
+                    <tr class="category-row ${isClickable ? 'clickable' : 'disabled'}" 
+                        onclick="${isClickable ? `jumpToCategory('${cat.replace(/'/g, "\\'")}', event)` : ''}">
+                        <td>
+                            <span class="badge ${getBadgeClass(cat)}">${getBadgeIcon(cat)} ${cleanName}</span>
+                            ${isClickable ? '<span class="jump-indicator">🔍</span>' : ''}
+                        </td>
+                        <td style="color:#34d399; font-weight: bold;">${wCount}</td>
+                        <td style="color:#818cf8; font-weight: bold;">${bCount}</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('breakdownBody').innerHTML = catHtml;
+
+            let moveHtml = '';
+            gameData.moves.forEach((m, idx) => {
+                const cleanMoveLabel = getCleanCategoryName(m.label);
+                moveHtml += `<tr class="move-row" id="row-${idx}" onclick="selectMove(${idx})">
+                    <td>${m.move_num}</td>
+                    <td>${m.turn}</td>
+                    <td><strong>${m.san}</strong></td>
+                    <td><span class="badge ${getBadgeClass(m.label)}">${getBadgeIcon(m.label)} ${cleanMoveLabel}</span></td>
+                    <td style="color:#94a3b8;">-${m.win_loss}%</td>
+                </tr>`;
+            });
+            document.getElementById('movesBody').innerHTML = moveHtml;
+
+            currentPly = 0;
+            updateStep();
+        }
+
+        function jumpToCategory(category, evt) {
+            if (!gameData || !gameData.moves) return;
+
+            const matchingIndices = [];
+            gameData.moves.forEach((m, idx) => {
+                if (m.label === category) matchingIndices.push(idx);
+            });
+
+            if (matchingIndices.length === 0) return;
+
+            if (categoryPointers[category] === undefined || categoryPointers[category] >= matchingIndices.length - 1) {
+                categoryPointers[category] = 0;
+            } else {
+                categoryPointers[category]++;
+            }
+
+            const targetIndex = matchingIndices[categoryPointers[category]];
+            selectMove(targetIndex);
+
+            document.querySelectorAll('.category-row').forEach(el => el.classList.remove('active-cat'));
+            if (evt && evt.currentTarget) evt.currentTarget.classList.add('active-cat');
+        }
+
+        function updateStep() {
+            document.querySelectorAll('.move-row').forEach(el => el.classList.remove('selected'));
+
+            const evalBar = document.getElementById('evalBarFill');
+            const evalText = document.getElementById('evalScoreText');
+
+            if (currentPly === 0) {
+                document.getElementById('boardBox').innerHTML = gameData.initial_svg;
+                document.getElementById('moveHeader').innerText = "Starting Position";
+                document.getElementById('badgeBox').innerHTML = "";
+                document.getElementById('recBox').innerText = "";
+
+                evalBar.style.height = "50%";
+                evalText.innerText = "0.0";
+                evalText.className = "eval-score-text score-white";
+            } else {
+                const m = gameData.moves[currentPly - 1];
+                const cleanName = getCleanCategoryName(m.label);
+                document.getElementById('boardBox').innerHTML = m.svg;
+                
+                const movePrefix = m.turn === 'White' ? `${m.move_num}.` : `${m.move_num}...`;
+                document.getElementById('moveHeader').innerText = `${m.turn}: ${movePrefix} ${m.san}`;
+                document.getElementById('badgeBox').innerHTML = `<span class="badge ${getBadgeClass(m.label)}">${getBadgeIcon(m.label)} ${cleanName}</span>`;
+                
+                if (m.label === "Book") {
+                    document.getElementById('recBox').innerText = "Standard opening theory move";
+                } else if (m.label === "Best" || m.label.includes("Brilliant")) {
+                    document.getElementById('recBox').innerText = "Top engine choice";
+                } else {
+                    document.getElementById('recBox').innerText = `Recommended: ${m.best_san}`;
+                }
+                
+                evalBar.style.height = `${m.eval_white}%`;
+                evalText.innerText = m.eval_str;
+
+                if (m.eval_white < 50.0) {
+                    evalText.className = "eval-score-text score-black";
+                } else {
+                    evalText.className = "eval-score-text score-white";
+                }
+
+                const selectedRow = document.getElementById(`row-${currentPly - 1}`);
+                if (selectedRow) {
+                    selectedRow.classList.add('selected');
+                    selectedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+
+        function selectMove(idx) { currentPly = idx + 1; updateStep(); }
+        function prevMove() { if (currentPly > 0) { currentPly--; updateStep(); } }
+        function nextMove() { if (currentPly < gameData.moves.length) { currentPly++; updateStep(); } }
+        function firstMove() { currentPly = 0; updateStep(); }
+        function lastMove() { currentPly = gameData.moves.length; updateStep(); }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "ArrowLeft") prevMove();
+            if (e.key === "ArrowRight") nextMove();
+        });
+    </script>
+</body>
+</html>
