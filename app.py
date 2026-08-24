@@ -156,11 +156,9 @@ def classify_move_multipv(board_before: chess.Board, move: chess.Move, best_move
                           is_book: bool, pov_score: chess.engine.PovScore = None,
                           prev_opponent_loss: float = 0.0, line2_win_gap: float = 0.0) -> str:
     
-    # 0. Book Move Check
     if is_book:
         return "Book"
 
-    # 1. Immediate Checkmate Guard
     temp_board = board_before.copy()
     temp_board.push(move)
     if temp_board.is_checkmate():
@@ -170,42 +168,34 @@ def classify_move_multipv(board_before: chess.Board, move: chess.Move, best_move
     win_after_mover = win_after_white if turn == chess.WHITE else (100.0 - win_after_white)
     win_loss = max(0.0, win_before_mover - win_after_mover)
 
-    # 2. Critical Blunder Guard (Prioritize Blunder over Miss on decisive drops/mates)
     if win_loss >= 20.0 or (win_after_mover <= 5.0 and win_before_mover >= 40.0):
         return "Blunder (??)"
 
-    # 3. Forced Mate Target
     is_mate_eval = False
     if pov_score:
         score_mover = pov_score.white() if turn == chess.WHITE else pov_score.black()
         if score_mover.is_mate() and score_mover.mate() and score_mover.mate() > 0:
             is_mate_eval = True
 
-    # 4. Brilliant Move (Strict: Must be Best Move + Sound Sacrifice + Maintain Winning Position)
     is_sac = is_piece_hanging_or_sacrificed(board_before, move, turn)
     moved_piece = board_before.piece_at(move.from_square)
 
     if move == best_move and is_sac:
-        # Prevent false-positive brilliant moves on unsound/refutable sacs
         if win_loss <= 0.05 and win_after_mover >= 52.0:
             if is_mate_eval or win_before_mover <= 80.0:
                 return "Brilliant (!!)"
 
-    # 5. Great Move (Single winning/finding move with significant drop on alternatives)
     if move == best_move and line2_win_gap >= 7.0 and win_loss <= 0.05 and win_before_mover <= 70.0:
         return "Great (!)"
 
-    # 6. Best Move Guard
     if move == best_move or win_loss <= 0.2:
         return "Best"
 
-    # 7. Miss Classification
     if prev_opponent_loss >= 10.0 and win_loss >= 10.0:
         return "Miss"
     if win_before_mover >= 75.0 and win_loss >= 15.0:
         return "Miss"
 
-    # 8. Evaluation Drop Brackets
     if win_before_mover >= 96.0 and win_after_mover >= 90.0:
         if win_loss <= 4.0:
             return "Good"

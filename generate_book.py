@@ -3,8 +3,11 @@ import chess
 import chess.pgn
 import chess.polyglot
 
-# A curated master database of standard opening theory and transpositions (ECO A00 - E99)
+# Comprehensive master database of standard opening theory (ECO A00 - E99)
 MASTER_OPENINGS_PGN = """
+[Event "Bird Opening: Nimzo-Larsen Variation"]
+1. f4 d5 2. b3 Nf6 3. Bb2 c5 4. e3 g6 5. Bb5+ Bd7 6. Bxf6 exf6 7. Bxd7+ Qxd7 8. Nf3 Bg7 9. c3 f5 10. d4 b6 11. O-O O-O *
+
 [Event "Ruy Lopez: Morphy Defense"]
 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O *
 
@@ -40,9 +43,6 @@ MASTER_OPENINGS_PGN = """
 
 [Event "French: Winawer"]
 1. e4 e6 2. d4 d5 3. Nc3 Bb4 4. e5 c5 5. a3 Bxc3+ 6. bxc3 Ne7 7. Qg4 O-O *
-
-[Event "Bird Opening: Nimzo-Larsen Variation"]
-1. f4 d5 2. b3 Nf6 3. Bb2 c5 4. e3 g6 5. Bb5+ Bd7 6. Bxf6 exf6 7. Bxd7+ Qxd7 8. Nf3 Bg7 9. c3 f5 10. d4 b6 11. O-O O-O *
 
 [Event "French: Classical"]
 1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5 Be7 5. e5 Nfd7 6. Bxe7 Qxe7 7. f4 O-O 8. Nf3 *
@@ -83,7 +83,7 @@ MASTER_OPENINGS_PGN = """
 [Event "King's Indian Defense: Classical"]
 1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. Nf3 O-O 6. Be2 e5 7. O-O Nc6 8. d5 Ne7 *
 
-[Event "Grünfeld Defense: Russian / Hungarian / Game of the Century"]
+[Event "Grünfeld Defense: Russian / Hungarian"]
 1. Nf3 Nf6 2. c4 g6 3. Nc3 Bg7 4. d4 O-O 5. Bf4 d5 6. Qb3 dxc4 7. Qxc4 c6 8. e4 Nbd7 9. Rd1 Nb6 *
 
 [Event "Grünfeld Defense: Exchange"]
@@ -111,6 +111,19 @@ MASTER_OPENINGS_PGN = """
 1. Nf3 Nf6 2. g3 d5 3. Bg2 c6 4. O-O Bg4 5. d3 Nbd7 6. Nbd2 e5 7. e4 Bd6 *
 """
 
+def encode_polyglot_move(move: chess.Move) -> int:
+    to_file = chess.square_file(move.to_square)
+    to_row = chess.square_rank(move.to_square)
+    from_file = chess.square_file(move.from_square)
+    from_row = chess.square_rank(move.from_square)
+    
+    promo_code = 0
+    if move.promotion:
+        promo_map = {chess.KNIGHT: 1, chess.BISHOP: 2, chess.ROOK: 3, chess.QUEEN: 4}
+        promo_code = promo_map.get(move.promotion, 0)
+        
+    return (to_file & 0x7) | ((to_row & 0x7) << 3) | ((from_file & 0x7) << 6) | ((from_row & 0x7) << 9) | ((promo_code & 0x7) << 12)
+
 def generate_book():
     entries = []
     pgn_io = io.StringIO(MASTER_OPENINGS_PGN.strip())
@@ -122,11 +135,10 @@ def generate_book():
         board = game.board()
         for move in game.mainline_moves():
             key = chess.polyglot.zobrist_hash(board)
-            raw_move = chess.polyglot.encode_move(move)
-            entries.append((key, raw_move, 1, 0)) # key, move, weight, learn
+            raw_move = encode_polyglot_move(move)
+            entries.append((key, raw_move, 1, 0))
             board.push(move)
 
-    # Sort entries by zobrist key ascending as required by Polyglot specification
     entries.sort(key=lambda x: x[0])
 
     with open("Performance.bin", "wb") as f:
