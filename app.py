@@ -15,23 +15,19 @@ app = Flask(__name__)
 BOOK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Performance.bin")
 
 def get_engine_path(user_custom_path=None):
-    # 1. If user provided a valid, existing path on this host
     if user_custom_path:
         cleaned_path = user_custom_path.strip().strip('"').strip("'")
         if cleaned_path and os.path.isfile(cleaned_path):
             return cleaned_path
 
-    # 2. Check Linux standard paths (Docker / Render environment)
     for linux_path in ["/usr/games/stockfish", "/usr/bin/stockfish", "/usr/local/bin/stockfish"]:
         if os.path.isfile(linux_path):
             return linux_path
 
-    # 3. Check system PATH
     system_engine = shutil.which("stockfish") or shutil.which("stockfish.exe")
     if system_engine:
         return system_engine
 
-    # 4. Check local Windows directory candidates for local offline testing
     base_dir = os.path.dirname(os.path.abspath(__file__))
     candidates = [
         os.path.join(base_dir, "stockfish-windows-x86-64-avx2", "stockfish", "stockfish-windows-x86-64-avx2.exe"),
@@ -243,10 +239,10 @@ def analyze():
     pgn_text = data.get("pgn", "").strip()
 
     try:
-        depth = int(data.get("depth", 12))
-        depth = max(10, min(22, depth))
+        depth = int(data.get("depth", 10))
+        depth = max(8, min(14, depth))
     except (ValueError, TypeError):
-        depth = 12
+        depth = 10
 
     if not pgn_text:
         return jsonify({"error": "No PGN provided."}), 400
@@ -281,10 +277,10 @@ def analyze():
         last_move_win_loss = 0.0
 
         with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
-            engine.configure({"Threads": 2, "Hash": 32})
+            engine.configure({"Threads": 1, "Hash": 16})
             mainline_moves = list(game.mainline_moves())
 
-            current_analysis_multi = engine.analyse(board, engine_limit, multipv=3)
+            current_analysis_multi = engine.analyse(board, engine_limit, multipv=2)
             current_analysis = current_analysis_multi[0]
 
             for idx, move in enumerate(mainline_moves):
@@ -321,7 +317,7 @@ def analyze():
                     win_loss = 0.0
                     label = "Best"
                 else:
-                    next_analysis_multi = engine.analyse(board, engine_limit, multipv=3)
+                    next_analysis_multi = engine.analyse(board, engine_limit, multipv=2)
                     next_analysis = next_analysis_multi[0]
                     win_after_white = score_to_white_win_pct(next_analysis["score"])
                     eval_str = format_eval_label(next_analysis["score"])
